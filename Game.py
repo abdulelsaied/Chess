@@ -73,11 +73,11 @@ class GameState():
         ### move must start with current players piece, end on empty square or an opponents piece
         first_piece = move.piece_moved
         second_piece = move.piece_captured
-        if (('w' in first_piece and self.whites_turn) or ('b' in first_piece and not self.whites_turn)) and (('w' in second_piece and not self.whites_turn) or ('b' in second_piece and self.whites_turn) or second_piece == '--'):
+        if self.is_friendly_piece_string(first_piece) and (not self.is_friendly_piece_string(second_piece) or second_piece == '--'):
             ### validate move made here
-            #legal_moves = self.generate_pseudo_legal_moves()
-            #print("Number of moves: ", len(legal_moves))
-            #print("Legal moves: ", legal_moves)
+            legal_moves = self.generate_pseudo_legal_moves()
+            print("Number of moves: ", len(legal_moves))
+            print("Legal moves: ", legal_moves)
             
             self.board[move.start_row][move.start_col] = '--'
             self.board[move.end_row][move.end_col] = move.piece_moved
@@ -127,14 +127,18 @@ class GameState():
         piece_on_current_square = self.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index): ## end_index + 1?
             for n in range(squares_to_edge[board_num][direction_index]):
+                print(direction_index, n)
                 target_square = board_num + direction_offsets[direction_index] * (n + 1)
                 if (self.is_friendly_piece(target_square)):
+                    print("piece blocked")
                     break
                 piece_on_target_square = self.get_square_at_board_index(target_square)
                 print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
                 # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
-                #possible_moves.append((piece_on_current_square, piece_on_target_square))
-                if (not self.is_friendly_piece(target_square)):
+                possible_moves.append((piece_on_current_square, piece_on_target_square))
+                if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
+                    print("opponent piece in the way!")
+                    print(self.get_piece_at_board_index(target_square))
                     break
         return possible_moves
 
@@ -169,10 +173,31 @@ class GameState():
                 possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7))) 
         return possible_moves
 
+    # a king can move with all 8 offsets, but only 
+    # fix this!!!!
     def generate_king_moves(self, board_num):
-        return []
+        possible_moves = []
+        start_index = 0 
+        end_index = 8
+        piece_on_current_square = self.get_square_at_board_index(board_num)
+        for direction_index in range(start_index, end_index):
+            target_square = board_num + direction_offsets[direction_index]
+            if self.is_friendly_piece(target_square):
+                print("piece blocked")
+                break
+            piece_on_target_square = self.get_square_at_board_index(target_square)
+            print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
+            # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
+            possible_moves.append((piece_on_current_square, piece_on_target_square))
+            if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
+                print("opponent piece in the way!")
+                print(self.get_piece_at_board_index(target_square))
+                break
+        return possible_moves
+
     def generate_knight_moves(self, board_num):
         return []
+
     def generate_legal_moves(self):
         pass
 
