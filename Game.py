@@ -75,8 +75,10 @@ class GameState():
         second_piece = move.piece_captured
         if (('w' in first_piece and self.whites_turn) or ('b' in first_piece and not self.whites_turn)) and (('w' in second_piece and not self.whites_turn) or ('b' in second_piece and self.whites_turn) or second_piece == '--'):
             ### validate move made here
-            legal_moves = self.generate_pseudo_legal_moves()
-            print("Legal moves: ", legal_moves)
+            #legal_moves = self.generate_pseudo_legal_moves()
+            #print("Number of moves: ", len(legal_moves))
+            #print("Legal moves: ", legal_moves)
+            
             self.board[move.start_row][move.start_col] = '--'
             self.board[move.end_row][move.end_col] = move.piece_moved
             self.move_log.append(move)
@@ -125,12 +127,13 @@ class GameState():
         piece_on_current_square = self.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index): ## end_index + 1?
             for n in range(squares_to_edge[board_num][direction_index]):
-                target_square = board_num + direction_offsets[direction_index] * (n + 1) - 1
+                target_square = board_num + direction_offsets[direction_index] * (n + 1)
                 if (self.is_friendly_piece(target_square)):
                     break
                 piece_on_target_square = self.get_square_at_board_index(target_square)
+                print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
                 # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
-                possible_moves.append((piece_on_current_square, piece_on_target_square))
+                #possible_moves.append((piece_on_current_square, piece_on_target_square))
                 if (not self.is_friendly_piece(target_square)):
                     break
         return possible_moves
@@ -138,17 +141,34 @@ class GameState():
     def generate_pawn_moves(self, board_num):
         possible_moves = []
         current_square = self.get_square_at_board_index(board_num)
+        rank = self.get_rank(board_num)
+        file = self.get_file(board_num)
+        # if whites turn, check first if theres an empty space up left right, including check for edges
+        # then, check if the piece is on the 2nd rank, eligible for 2 pawn moves 
+        # 
+        # add case for rank 7, where u can promote to a different piece
         if (self.whites_turn):
-            if (self.get_piece_at_board_index(board_num - 7) == '--'):
-                # possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 7), self.board))
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7)))
-            if (self.get_piece_at_board_index(board_num - 8) == '--'):
-                # possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 8), self.board))
+            if rank == 2:
+                if self.get_piece_at_board_index(board_num - 16) == '--':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 16)))
+            if self.get_piece_at_board_index(board_num - 8) == '--':
                 possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8)))
-            if (self.get_piece_at_board_index(board_num - 9) == '--'):
-                # possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 9), self.board))
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 0)))
+            if file != 1 and self.get_piece_at_board_index(board_num - 9)[0] == 'b':
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 9)))
+            if file != 8 and self.get_piece_at_board_index(board_num - 7)[0] == 'b':
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7))) 
+        else:
+            if rank == 7:
+                if self.get_piece_at_board_index(board_num + 16) == '--':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 16)))
+            if self.get_piece_at_board_index(board_num + 8) == '--':
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num + 8)))
+            if file != 8 and self.get_piece_at_board_index(board_num + 9)[0] == 'w':
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num + 9)))
+            if file != 1 and self.get_piece_at_board_index(board_num + 7)[0] == 'w':
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7))) 
         return possible_moves
+
     def generate_king_moves(self, board_num):
         return []
     def generate_knight_moves(self, board_num):
@@ -174,6 +194,7 @@ class GameState():
     output: piece ('wP')
     '''
     def get_piece_at_board_index(self, board_num):
+        assert board_num >= 0 and board_num <= 63
         row_value = board_num // 8
         col_value = board_num % 8
         return self.board[row_value][col_value] 
@@ -204,6 +225,14 @@ class GameState():
             print('Whites turn')
         else:
             print('Blacks turn')
+    
+    def get_rank(self, board_num):
+        assert board_num > 0 and board_num < 64
+        return abs(board_num - 63) // 8 + 1
+
+    def get_file(self, board_num):
+        assert board_num > 0 and board_num < 64
+        return board_num % 8 + 1
 
 
 class Move():

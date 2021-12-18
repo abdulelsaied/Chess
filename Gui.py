@@ -45,6 +45,8 @@ def main():
     if selected_square, there are __ possibilities:
         letting go on same square, should set clickable to true and selected_square to same square
         letting go on different square, make move between selected_square and current square and reset all variables.
+
+
     '''
     while run:
         clock.tick(FPS)
@@ -60,14 +62,10 @@ def main():
             if event.type == p.MOUSEBUTTONDOWN:
                 if (('w' in current_piece and gamestate.whites_turn) or ('b' in current_piece and not gamestate.whites_turn)):
                     if (clickable):
-                        if (current_square != selected_square):
-                            move = Game.Move(selected_square, current_square, gamestate.board)
-                            print(move.get_chess_notation())
-                            gamestate.make_move(move)
-                            gamestate.print_turn()
                         selected_square = ()
                         clickable = False
                         draggable = False
+                        break
                     else:
                         selected_square = current_square 
                         draggable = True
