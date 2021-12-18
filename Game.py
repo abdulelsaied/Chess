@@ -1,6 +1,6 @@
 import re
 
-direction_offsets = [8, -8, 1, -1, 7, -7, 9, -9]
+direction_offsets = [-8, 8, 1, -1, 7, -7, 9, -9]
 squares_to_edge = {}
 
 
@@ -74,8 +74,6 @@ class GameState():
         first_piece = move.piece_moved
         second_piece = move.piece_captured
         if (('w' in first_piece and self.whites_turn) or ('b' in first_piece and not self.whites_turn)) and (('w' in second_piece and not self.whites_turn) or ('b' in second_piece and self.whites_turn) or second_piece == '--'):
-            print("first_piece ", first_piece)
-            print("second_piece ", second_piece)
             ### validate move made here
             legal_moves = self.generate_pseudo_legal_moves()
             print("Legal moves: ", legal_moves)
@@ -83,7 +81,6 @@ class GameState():
             self.board[move.end_row][move.end_col] = move.piece_moved
             self.move_log.append(move)
             self.whites_turn = not self.whites_turn
-            print("move_log: ", self.move_log)
 
     def undo_move(self):
         if self.move_log:
@@ -99,7 +96,6 @@ class GameState():
             for j in range(8):
                 piece = self.board[i][j]
                 board_num = i * 8 + j
-                print(board_num)
                 if (self.is_friendly_piece(board_num)):
                     if ('P' in piece): # this is a pawn
                         print("pawn")
@@ -123,42 +119,39 @@ class GameState():
 
     # boardnum is a number from 0 to 63, i * 8 + j
     def generate_sliding_moves(self, board_num, piece_type):
-        print('got here')
         possible_moves = []
         start_index = 4 if piece_type == 'B' else 0
         end_index = 4 if piece_type == 'R' else 8
         piece_on_current_square = self.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index): ## end_index + 1?
             for n in range(squares_to_edge[board_num][direction_index]):
-                target_square = board_num + direction_offsets[direction_index] * (n + 1)
-                print("target_square ", target_square)
-                print("n ", n)
-                print("direction_index ", direction_index)
+                target_square = board_num + direction_offsets[direction_index] * (n + 1) - 1
                 if (self.is_friendly_piece(target_square)):
                     break
                 piece_on_target_square = self.get_square_at_board_index(target_square)
-                possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
-                print("Got here")
+                # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
+                possible_moves.append((piece_on_current_square, piece_on_target_square))
                 if (not self.is_friendly_piece(target_square)):
                     break
         return possible_moves
 
     def generate_pawn_moves(self, board_num):
-        print('got here')
         possible_moves = []
         current_square = self.get_square_at_board_index(board_num)
         if (self.whites_turn):
             if (self.get_piece_at_board_index(board_num - 7) == '--'):
-                possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 7), self.board))
-            # if (self.get_piece_at_board_index()):
+                # possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 7), self.board))
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7)))
             if (self.get_piece_at_board_index(board_num - 8) == '--'):
-                possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 8), self.board))
-            if (self.get_piece_at_board_index(board_num - 8) == '--'):
-                possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 8), self.board))
+                # possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 8), self.board))
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8)))
+            if (self.get_piece_at_board_index(board_num - 9) == '--'):
+                # possible_moves.append(Move(current_square, self.get_square_at_board_index(board_num - 9), self.board))
+                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 0)))
         return possible_moves
-    def generate_king_moves(board_num):
+    def generate_king_moves(self, board_num):
         return []
-    def generate_knight_moves(board_num):
+    def generate_knight_moves(self, board_num):
         return []
     def generate_legal_moves(self):
         pass
@@ -197,6 +190,11 @@ class GameState():
 
     def is_friendly_piece(self, board_num):
         piece = self.get_piece_at_board_index(board_num)
+        if (('w' in piece and self.whites_turn) or ('b' in piece and not self.whites_turn)):
+            return True
+        return False
+    
+    def is_friendly_piece_string(self, piece):
         if (('w' in piece and self.whites_turn) or ('b' in piece and not self.whites_turn)):
             return True
         return False

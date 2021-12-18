@@ -13,16 +13,6 @@ COLORS = ['#ebecd0', '#779556']
 WIN = p.display.set_mode((WIDTH, HEIGHT))
 p.display.set_caption('Chess Project')
 
-def load_images():
-    for piece in PIECES:
-        IMAGES[piece] = p.transform.scale(p.image.load('images/' + piece + "-highres.png"), (SQUARE_LENGTH, SQUARE_LENGTH))
-
-"""
-Returns a tuple desribing the coordinates of a square clicked.
-"""
-def get_current_square(mouse):
-    return (mouse.get_pos()[1] // SQUARE_LENGTH, mouse.get_pos()[0] // SQUARE_LENGTH)
-
 
 def main():
     p.init()
@@ -49,15 +39,12 @@ def main():
         clicked on new square --> make the move between selected_square and recently clicked square
         clicked on same square --> cancel clickable ability a
     if clickable is false, then we are starting the drag and drop process, so set selected_square to clicked button and drag to true
-
     MOTION: 
     if drag is true, image should follow cursor
-
     UP: 
     if selected_square, there are __ possibilities:
         letting go on same square, should set clickable to true and selected_square to same square
         letting go on different square, make move between selected_square and current square and reset all variables.
-
     '''
     while run:
         clock.tick(FPS)
@@ -70,10 +57,6 @@ def main():
             current_square = get_current_square(p.mouse)
             current_piece = gamestate.get_piece_at_index(current_square)
 
-            # if mousedown:
-            # scenario 1: clicking a piece for the first time
-            # scenario 2: had previously clicked and released. clicking a new square
-            # scenario 3: had previously clicked and released. clicking the same square 
             if event.type == p.MOUSEBUTTONDOWN:
                 if (('w' in current_piece and gamestate.whites_turn) or ('b' in current_piece and not gamestate.whites_turn)):
                     if (clickable):
@@ -89,9 +72,7 @@ def main():
                         selected_square = current_square 
                         draggable = True
                         drag_now = True
-                        xcoor = selected_square[0]
-                        ycoor = selected_square[1]
-                    image_key = gamestate.get_image_at_coordinates(xcoor, ycoor)
+                    image_key = gamestate.get_image_at_coordinates(selected_square[0], selected_square[1])
                     if image_key == '--':
                         break
                     image_to_drag = IMAGES[image_key]
@@ -104,7 +85,6 @@ def main():
                     clickable = True
                     draggable = False
                 else:
-                    print(selected_square)
                     move = Game.Move(selected_square, current_square, gamestate.board)
                     print(move.get_chess_notation())
                     gamestate.make_move(move)
@@ -114,14 +94,9 @@ def main():
                     draggable = False
 
             elif event.type == p.MOUSEMOTION:
-                # piece we want to drag is at selected_square
-                # how to get image at that coordinate
                 if selected_square and draggable:
                     drag_now = True
-                    xcoor = selected_square[0]
-                    ycoor = selected_square[1]
-                    image_to_drag = IMAGES[gamestate.get_image_at_coordinates(xcoor, ycoor)]
-
+                    image_to_drag = IMAGES[gamestate.get_image_at_coordinates(selected_square[0], selected_square[1])]
 
             elif event.type == p.KEYDOWN:
                 if (event.key) == p.K_z:
@@ -132,6 +107,7 @@ def main():
         if p.mouse.get_pressed()[0]:
             draw_dragged_piece(screen, mx, my, image_to_drag, drag_now)
         p.display.flip()
+
 
 def draw_gamestate(screen, gamestate):
     draw_board(screen)
@@ -152,6 +128,16 @@ def draw_pieces(screen, board):
 def draw_dragged_piece(screen, mx, my, image, drag_now):
     if (drag_now):
         screen.blit(image, (mx - 25, my - 25))
+
+def load_images():
+    for piece in PIECES:
+        IMAGES[piece] = p.transform.scale(p.image.load('images/' + piece + "-highres.png"), (SQUARE_LENGTH, SQUARE_LENGTH))
+
+"""
+Returns a tuple desribing the coordinates of a square clicked.
+"""
+def get_current_square(mouse):
+    return (mouse.get_pos()[1] // SQUARE_LENGTH, mouse.get_pos()[0] // SQUARE_LENGTH)
 
 if __name__ == '__main__':
     main()
