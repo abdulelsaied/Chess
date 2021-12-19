@@ -1,7 +1,10 @@
 import re
 
 direction_offsets = [-8, 8, 1, -1, 7, -7, 9, -9]
+knight_offsets_x = [2, 1, -1, -2, -2, -1, 1, 2]
+knight_offsets_y = [1, 2, 2, 1, -1, -2, -2, -1]
 squares_to_edge = {}
+move_count_dict = {}
 
 
 """
@@ -76,8 +79,8 @@ class GameState():
         if self.is_friendly_piece_string(first_piece) and (not self.is_friendly_piece_string(second_piece) or second_piece == '--'):
             ### validate move made here
             legal_moves = self.generate_pseudo_legal_moves()
-            print("Number of moves: ", len(legal_moves))
-            print("Legal moves: ", legal_moves)
+            # print("Number of moves: ", len(legal_moves))
+            # print("Legal moves: ", legal_moves)
             
             self.board[move.start_row][move.start_col] = '--'
             self.board[move.end_row][move.end_col] = move.piece_moved
@@ -100,22 +103,22 @@ class GameState():
                 board_num = i * 8 + j
                 if (self.is_friendly_piece(board_num)):
                     if ('P' in piece): # this is a pawn
-                        print("pawn")
+                        # print("pawn")
                         possible_moves += (self.generate_pawn_moves(board_num))
                     elif ('Q' in piece):
-                        print("queen")
+                        # print("queen")
                         possible_moves += (self.generate_sliding_moves(board_num, 'Q'))
                     elif ('K' in piece):
-                        print("king")
+                        # print("king")
                         possible_moves += (self.generate_king_moves(board_num))
                     elif ('B' in piece):
-                        print("bishop")
+                        # print("bishop")
                         possible_moves += (self.generate_sliding_moves(board_num, 'B'))
                     elif ('R' in piece):
-                        print("rook")
+                        # print("rook")
                         possible_moves += (self.generate_sliding_moves(board_num, 'R'))
                     elif ('N' in piece):
-                        print("knight")
+                        # print("knight")
                         possible_moves += (self.generate_knight_moves(board_num))
         return possible_moves
 
@@ -127,18 +130,18 @@ class GameState():
         piece_on_current_square = self.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index): ## end_index + 1?
             for n in range(squares_to_edge[board_num][direction_index]):
-                print(direction_index, n)
+                # print(direction_index, n)
                 target_square = board_num + direction_offsets[direction_index] * (n + 1)
                 if (self.is_friendly_piece(target_square)):
-                    print("piece blocked")
+                    # print("piece blocked")
                     break
                 piece_on_target_square = self.get_square_at_board_index(target_square)
-                print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
+                # print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
                 # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
                 possible_moves.append((piece_on_current_square, piece_on_target_square))
                 if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
-                    print("opponent piece in the way!")
-                    print(self.get_piece_at_board_index(target_square))
+                    # print("opponent piece in the way!")
+                    # print(self.get_piece_at_board_index(target_square))
                     break
         return possible_moves
 
@@ -173,33 +176,72 @@ class GameState():
                 possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7))) 
         return possible_moves
 
-    # a king can move with all 8 offsets, but only 
-    # fix this!!!!
+    # a king can move with all 8 offsets, but only 1 deep
     def generate_king_moves(self, board_num):
         possible_moves = []
         start_index = 0 
         end_index = 8
         piece_on_current_square = self.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index):
-            target_square = board_num + direction_offsets[direction_index]
-            if self.is_friendly_piece(target_square):
-                print("piece blocked")
-                break
-            piece_on_target_square = self.get_square_at_board_index(target_square)
-            print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
-            # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
-            possible_moves.append((piece_on_current_square, piece_on_target_square))
-            if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
-                print("opponent piece in the way!")
-                print(self.get_piece_at_board_index(target_square))
-                break
+            # print(squares_to_edge[board_num][direction_index])
+            if squares_to_edge[board_num][direction_index] > 0:
+                target_square = board_num + direction_offsets[direction_index]
+                if self.is_friendly_piece(target_square):
+                    # print("piece blocked")
+                    continue
+                piece_on_target_square = self.get_square_at_board_index(target_square)
+                # print(piece_on_current_square, piece_on_target_square, direction_index, squares_to_edge[board_num][direction_index])
+                possible_moves.append((piece_on_current_square, piece_on_target_square))
         return possible_moves
 
+    # need to use rank/col to calculate bounds, then convert backwards if needed
+    # need 2 offsets
     def generate_knight_moves(self, board_num):
-        return []
+        possible_moves = []
+        piece_on_current_square = self.get_square_at_board_index(board_num)
+        for i in range(len(knight_offsets_x)):
+            x = self.get_rank(board_num)
+            y = self.get_file(board_num)
+            dx = knight_offsets_x[i]
+            dy = knight_offsets_y[i]
+            new_rank = x + dx
+            new_file = y + dy
+            # print("++")
+            # print("rank: ", x)
+            # print("file: ", y)
+            # print("new_rank: ", new_rank)
+            # print("new_file: ", new_file)
+            new_pos = (8 - new_rank) * 8 + new_file - 1
+            # print("new_pos: ", new_pos)
+            # print("++")
+            if (not 1 <= new_rank <= 8) or (not 1 <= new_file <= 8):
+                continue
+            new_pos = (8 - new_rank) * 8 + (8 - new_file)
+            if self.is_friendly_piece(new_pos):
+                # print("piece blocked, knight")
+                continue
+            piece_on_target_square = self.get_square_at_board_index(new_pos)
+            # print(piece_on_current_square, piece_on_target_square)
+            possible_moves.append((piece_on_current_square, piece_on_target_square))
+        return possible_moves
 
     def generate_legal_moves(self):
         pass
+
+
+    def count_moves(self, depth):
+        if depth == 0:
+            return 1
+        legal_moves = self.generate_pseudo_legal_moves()
+        num_pos = 0
+        for legal_move in legal_moves:
+            self.make_move(Move(legal_move[0], legal_move[1], self.board))
+            num_pos += self.count_moves(depth -1)
+            self.undo_move()
+        return num_pos
+
+
+
 
     def get_image_at_coordinates(self, xcoor, ycoor):
         return self.board[xcoor][ycoor]
@@ -251,10 +293,18 @@ class GameState():
         else:
             print('Blacks turn')
     
+    """
+    Returns the rank of a given board_num
+    1 - 8
+    """
     def get_rank(self, board_num):
         assert board_num > 0 and board_num < 64
         return abs(board_num - 63) // 8 + 1
 
+    """
+    Returns the file of a given board_num
+    1 - 8
+    """
     def get_file(self, board_num):
         assert board_num > 0 and board_num < 64
         return board_num % 8 + 1
