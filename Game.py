@@ -5,6 +5,10 @@ knight_offsets_x = [2, 1, -1, -2, -2, -1, 1, 2]
 knight_offsets_y = [1, 2, 2, 1, -1, -2, -2, -1]
 squares_to_edge = {}
 move_count_dict = {}
+ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4, '5': 3, '6': 2, '7': 1, '8': 0}
+rows_to_ranks = {i: j for j, i in ranks_to_rows.items()}
+files_to_cols = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7}
+cols_to_files = {i: j for j, i in files_to_cols.items()}
 
 
 """
@@ -61,31 +65,36 @@ def fen_to_array(fen_string):
     if color == 'b':
         white_to_move = False
     
-    return (board, white_to_move)
+    return (board, white_to_move, castling, enpassant, halfmove, fullmove)
     
 class GameState():
 
     def __init__(self, fen_string = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
         precompute_data()
-        self.board, self.whites_turn = fen_to_array(fen_string)
+        self.board, self.whites_turn, self.castling, self.enpassant, self.halfmove, self.fullmove = fen_to_array(fen_string)
         self.move_log = []
         self.move_set = []
 
 
     def make_move(self, move):
         ### move must start with current players piece, end on empty square or an opponents piece
+        
         first_piece = move.piece_moved
         second_piece = move.piece_captured
         if self.is_friendly_piece_string(first_piece) and (not self.is_friendly_piece_string(second_piece) or second_piece == '--'):
             ### validate move made here
+            ### need to fix pawn promotion and add en pessant
             legal_moves = self.generate_pseudo_legal_moves()
             # print("Number of moves: ", len(legal_moves))
             # print("Legal moves: ", legal_moves)
-            
-            self.board[move.start_row][move.start_col] = '--'
-            self.board[move.end_row][move.end_col] = move.piece_moved
-            self.move_log.append(move)
-            self.whites_turn = not self.whites_turn
+            if ((move.start_row, move.start_col), (move.end_row, move.end_col)) in legal_moves:  
+                self.board[move.start_row][move.start_col] = '--'
+                self.board[move.end_row][move.end_col] = move.piece_moved
+                self.move_log.append(move)
+                self.whites_turn = not self.whites_turn
+            else:
+                print("Not a valid move!")
+                print(((move.start_row, move.start_col), (move.end_row, move.end_col)))
 
     def undo_move(self):
         if self.move_log:
@@ -153,28 +162,93 @@ class GameState():
         # if whites turn, check first if theres an empty space up left right, including check for edges
         # then, check if the piece is on the 2nd rank, eligible for 2 pawn moves 
         # 
-        # add case for rank 7, where u can promote to a different piece
+        # add en pessant
+        # 
         if (self.whites_turn):
             if rank == 2:
                 if self.get_piece_at_board_index(board_num - 16) == '--':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 16)))
-            if self.get_piece_at_board_index(board_num - 8) == '--':
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8)))
-            if file != 1 and self.get_piece_at_board_index(board_num - 9)[0] == 'b':
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 9)))
-            if file != 8 and self.get_piece_at_board_index(board_num - 7)[0] == 'b':
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7))) 
+                    target_square = self.get_square_at_board_index(board_num - 16)
+                    possible_moves.append((current_square, target_square)) 
+            if rank == 7:
+                possible_moves += self.generate_pawn_promotion_moves(board_num)
+            else:
+                if self.get_piece_at_board_index(board_num - 8) == '--':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8)))
+                if file != 1 and self.get_piece_at_board_index(board_num - 9)[0] == 'b':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 9)))
+                if file != 8 and self.get_piece_at_board_index(board_num - 7)[0] == 'b':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7))) 
+                ### en passant, check if pawn can "capture" the enpassant square
+                # if self.enpassant != "-" and rank == 5 and (self.get_board_num_from_notation(self.enpassant)
         else:
             if rank == 7:
                 if self.get_piece_at_board_index(board_num + 16) == '--':
                     possible_moves.append((current_square, self.get_square_at_board_index(board_num + 16)))
-            if self.get_piece_at_board_index(board_num + 8) == '--':
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num + 8)))
-            if file != 8 and self.get_piece_at_board_index(board_num + 9)[0] == 'w':
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num + 9)))
-            if file != 1 and self.get_piece_at_board_index(board_num + 7)[0] == 'w':
-                possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7))) 
+            if rank == 2:
+                possible_moves += self.generate_pawn_promotion_moves(board_num)
+            else:
+                if self.get_piece_at_board_index(board_num + 8) == '--':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 8)))
+                if file != 8 and self.get_piece_at_board_index(board_num + 9)[0] == 'w':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 9)))
+                if file != 1 and self.get_piece_at_board_index(board_num + 7)[0] == 'w':
+                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7))) 
+        possible_moves += self.generate_en_passant_moves(board_num)
         return possible_moves
+
+    def generate_en_passant_moves(self, board_num):
+        if self.enpassant == '-':
+            return []
+        possible_moves = []
+        current_square = self.get_square_at_board_index(board_num)
+        rank = self.get_rank(board_num)
+        file = self.get_file(board_num)
+        ep_num = self.get_board_num_from_notation(self.enpassant) # c3 -> 18
+        if self.whites_turn:
+            if rank == 5:
+                print("got here")
+                if file != 1 and board_num - 9 == ep_num:
+                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP"))
+                elif file != 8 and board_num - 7 == ep_num:
+                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP")) 
+        else:
+            if rank == 4:
+                if file != 8 and board_num + 9 == ep_num:
+                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP"))
+                elif file != 1 and board_num + 7 == ep_num:
+                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP"))
+        return possible_moves
+
+    def generate_pawn_promotion_moves(self, board_num):
+        possible_moves = []
+        promotion_pieces = ["Q", "R", "N", "B"]
+        current_square = self.get_square_at_board_index(board_num)
+        rank = self.get_rank(board_num)
+        file = self.get_file(board_num)
+        if self.whites_turn:
+            if rank == 7:
+                if self.get_piece_at_board_index(board_num - 8) == '--':
+                    for piece in promotion_pieces:
+                        possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8), piece))
+                if file != 1 and self.get_piece_at_board_index(board_num - 9)[0] == 'b':
+                    for piece in promotion_pieces:
+                        possible_moves.append((current_square, self.get_square_at_board_index(board_num - 9), piece))
+                if file != 8 and self.get_piece_at_board_index(board_num - 7)[0] == 'b':
+                    for piece in promotion_pieces:
+                        possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7), piece)) 
+        else:
+            if rank == 2:
+                if self.get_piece_at_board_index(board_num + 8) == '--':
+                    for piece in promotion_pieces:
+                        possible_moves.append((current_square, self.get_square_at_board_index(board_num + 8), piece))
+                if file != 8 and self.get_piece_at_board_index(board_num + 9)[0] == 'w':
+                    for piece in promotion_pieces:
+                        possible_moves.append((current_square, self.get_square_at_board_index(board_num + 9), piece))
+                if file != 1 and self.get_piece_at_board_index(board_num + 7)[0] == 'w':
+                    for piece in promotion_pieces:
+                        possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7), piece)) 
+        return possible_moves
+
 
     # a king can move with all 8 offsets, but only 1 deep
     def generate_king_moves(self, board_num):
@@ -216,7 +290,6 @@ class GameState():
             # print("++")
             if (not 1 <= new_rank <= 8) or (not 1 <= new_file <= 8):
                 continue
-            new_pos = (8 - new_rank) * 8 + (8 - new_file)
             if self.is_friendly_piece(new_pos):
                 # print("piece blocked, knight")
                 continue
@@ -236,7 +309,7 @@ class GameState():
         num_pos = 0
         for legal_move in legal_moves:
             self.make_move(Move(legal_move[0], legal_move[1], self.board))
-            num_pos += self.count_moves(depth -1)
+            num_pos += self.count_moves(depth - 1)
             self.undo_move()
         return num_pos
 
@@ -310,6 +383,14 @@ class GameState():
         return board_num % 8 + 1
 
 
+    ## need function to convert e4 to board_num
+    def get_board_num_from_notation(self, notation):
+        new_rank = ranks_to_rows[notation[1]]
+        new_file = files_to_cols[notation[0]]
+        return new_rank * 8 + new_file
+    
+
+
 class Move():
 
     ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4, '5': 3, '6': 2, '7': 1, '8': 0}
@@ -330,6 +411,7 @@ class Move():
 
     def get_chess_notation(self):
         return self.get_rank_file(self.start_row, self.start_col) + self.get_rank_file(self.end_row, self.end_col)
+
 
     def get_rank_file(self, row, col):
         return self.cols_to_files[col] + self.rows_to_ranks[row]
