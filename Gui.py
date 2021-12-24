@@ -1,5 +1,6 @@
 import pygame as p 
 import Game
+import Utils
 
 #constants
 WIDTH = HEIGHT = 512
@@ -57,7 +58,7 @@ def main():
 
             # sets square and piece corresponding to position of the mouse.
             current_square = get_current_square(p.mouse)
-            current_piece = gamestate.get_piece_at_index(current_square)
+            current_piece = Utils.get_piece_at_index(gamestate, current_square)
 
             if event.type == p.MOUSEBUTTONDOWN:
                 if (('w' in current_piece and gamestate.whites_turn) or ('b' in current_piece and not gamestate.whites_turn)):
@@ -70,7 +71,7 @@ def main():
                         selected_square = current_square 
                         draggable = True
                         drag_now = True
-                    image_key = gamestate.get_image_at_coordinates(selected_square[0], selected_square[1])
+                    image_key = Utils.get_piece_at_index(gamestate, selected_square)
                     if image_key == '--':
                         break
                     image_to_drag = IMAGES[image_key]
@@ -94,7 +95,7 @@ def main():
             elif event.type == p.MOUSEMOTION:
                 if selected_square and draggable:
                     drag_now = True
-                    image_to_drag = IMAGES[gamestate.get_image_at_coordinates(selected_square[0], selected_square[1])]
+                    image_to_drag = IMAGES[Utils.get_piece_at_index(gamestate, selected_square)]
 
             elif event.type == p.KEYDOWN:
                 if (event.key) == p.K_z:

@@ -1,77 +1,20 @@
-import re
+import Utils
 
 direction_offsets = [-8, 8, 1, -1, 7, -7, 9, -9]
 knight_offsets_x = [2, 1, -1, -2, -2, -1, 1, 2]
 knight_offsets_y = [1, 2, 2, 1, -1, -2, -2, -1]
-squares_to_edge = {}
 move_count_dict = {}
 ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4, '5': 3, '6': 2, '7': 1, '8': 0}
 rows_to_ranks = {i: j for j, i in ranks_to_rows.items()}
 files_to_cols = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7}
 cols_to_files = {i: j for j, i in files_to_cols.items()}
 
-
-"""
-Returns an array containing distances to edge for each square
-squares_to_edge[i] = [n, s, e, w, sw, ne, se, nw]
-"""
-def precompute_data():
-    for i in range(8):
-        for j in range(8):
-            board_num = i * 8 + j
-            north = i
-            south = 7 - i
-            east = 7 - j
-            west = j
-            south_west = min(south, west)
-            north_east = min(north, east)
-            south_east = min(south, east)
-            north_west = min(north, west)
-            squares_to_edge[board_num] = [north, south, east, west, south_west, north_east, south_east, north_west]
-    return squares_to_edge
-
-def fen_to_array(fen_string):
-    #assert re.match('\s*^(((?:[rnbqkpRNBQKP1-8]+\/){7})[rnbqkpRNBQKP1-8]+)\s([b|w])\s([K|Q|k|q]{1,4})\s(-|[a-h][1-8])\s(\d+\s\d+)$', fen_string)
-    fields = fen_string.split(" ")
-    assert len(fields) == 6
-    board_info = fields[0]
-    color = fields[1]
-    castling = fields[2]
-    enpassant = fields[3]
-    halfmove = fields[4]
-    fullmove = fields[5]
-
-    # should import constants once its a class and use the value here
-    board = [["--" for i in range(8)] for j in range(8)]
-    current_rank = 0
-    current_file = 0
-
-    for char in board_info:
-        piece = '--'
-        if (char == '/'):
-            current_rank += 1
-            current_file = 0
-        else:
-            if (char.isdigit()): 
-                current_file += int(char)
-            else:
-                if (char.isupper()): # white piece
-                    board[current_rank][current_file] = 'w' + char
-                else:
-                    board[current_rank][current_file] = 'b' + char.upper()
-                current_file += 1
-
-    white_to_move = True
-    if color == 'b':
-        white_to_move = False
-    
-    return (board, white_to_move, castling, enpassant, halfmove, fullmove)
-    
 class GameState():
 
+
     def __init__(self, fen_string = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
-        precompute_data()
-        self.board, self.whites_turn, self.castling, self.enpassant, self.halfmove, self.fullmove = fen_to_array(fen_string)
+        Utils.precompute_data()
+        self.board, self.whites_turn, self.castling, self.enpassant, self.halfmove, self.fullmove = Utils.fen_to_array(fen_string)
         self.move_log = []
         self.move_set = []
 
@@ -154,18 +97,18 @@ class GameState():
         possible_moves = []
         start_index = 4 if piece_type == 'B' else 0
         end_index = 4 if piece_type == 'R' else 8
-        piece_on_current_square = self.get_square_at_board_index(board_num)
+        piece_on_current_square = Utils.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index): ## end_index + 1?
-            for n in range(squares_to_edge[board_num][direction_index]):
+            for n in range(Utils.squares_to_edge[board_num][direction_index]):
                 target_square = board_num + direction_offsets[direction_index] * (n + 1)
                 if (self.is_friendly_piece(target_square)):
                     # print("piece blocked")
                     break
-                piece_on_target_square = self.get_square_at_board_index(target_square)
+                piece_on_target_square = Utils.get_square_at_board_index(target_square)
                 # print(piece_on_current_square, piece_on_target_square, direction_index, n, squares_to_edge[board_num][direction_index])
                 # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
                 possible_moves.append((piece_on_current_square, piece_on_target_square))
-                if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
+                if (not self.is_friendly_piece(target_square) and Utils.get_piece_at_board_index(self, target_square) != '--'):
                     # append move with capture flag
                     break
         return possible_moves
@@ -174,40 +117,38 @@ class GameState():
     # problem with pawn moves
     def generate_pawn_moves(self, board_num):
         possible_moves = []
-        current_square = self.get_square_at_board_index(board_num)
+        current_square = Utils.get_square_at_board_index(board_num)
         rank = self.get_rank(board_num)
         file = self.get_file(board_num)
         # if whites turn, check first if theres an empty space up left right, including check for edges
         # then, check if the piece is on the 2nd rank, eligible for 2 pawn moves 
         if (self.whites_turn):
             if rank == 2:
-                if self.get_piece_at_board_index(board_num - 8) == '--' and self.get_piece_at_board_index(board_num - 16) == '--':
-                    target_square = self.get_square_at_board_index(board_num - 16)
+                if Utils.get_piece_at_board_index(self, board_num - 8) == '--' and Utils.get_piece_at_board_index(self, board_num - 16) == '--':
+                    target_square = Utils.get_square_at_board_index(board_num - 16)
                     possible_moves.append((current_square, target_square)) 
             if rank == 7:
                 possible_moves += self.generate_pawn_promotion_moves(board_num)
             else:
-                if self.get_piece_at_board_index(board_num - 8) == '--':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8)))
-                if file != 1 and self.get_piece_at_board_index(board_num - 9)[0] == 'b':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 9)))
-                if file != 8 and self.get_piece_at_board_index(board_num - 7)[0] == 'b':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7))) 
-                ### en passant, check if pawn can "capture" the enpassant square
-                # if self.enpassant != "-" and rank == 5 and (self.get_board_num_from_notation(self.enpassant)
+                if Utils.get_piece_at_board_index(self, board_num - 8) == '--':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num - 8)))
+                if file != 1 and Utils.get_piece_at_board_index(self, board_num - 9)[0] == 'b':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num - 9)))
+                if file != 8 and Utils.get_piece_at_board_index(self, board_num - 7)[0] == 'b':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num - 7))) 
         else:
             if rank == 7:
-                if self.get_piece_at_board_index(board_num + 8) == '--' and self.get_piece_at_board_index(board_num + 16) == '--':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 16)))
+                if Utils.get_piece_at_board_index(self, board_num + 8) == '--' and Utils.get_piece_at_board_index(self, board_num + 16) == '--':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 16)))
             if rank == 2:
                 possible_moves += self.generate_pawn_promotion_moves(board_num)
             else:
-                if self.get_piece_at_board_index(board_num + 8) == '--':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 8)))
-                if file != 8 and self.get_piece_at_board_index(board_num + 9)[0] == 'w':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 9)))
-                if file != 1 and self.get_piece_at_board_index(board_num + 7)[0] == 'w':
-                    possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7))) 
+                if Utils.get_piece_at_board_index(self, board_num + 8) == '--':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 8)))
+                if file != 8 and Utils.get_piece_at_board_index(self, board_num + 9)[0] == 'w':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 9)))
+                if file != 1 and Utils.get_piece_at_board_index(self, board_num + 7)[0] == 'w':
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 7))) 
         possible_moves += self.generate_en_passant_moves(board_num)
         return possible_moves
 
@@ -215,7 +156,7 @@ class GameState():
         if self.enpassant == '-':
             return []
         possible_moves = []
-        current_square = self.get_square_at_board_index(board_num)
+        current_square = Utils.get_square_at_board_index(board_num)
         rank = self.get_rank(board_num)
         file = self.get_file(board_num)
         ep_num = self.get_board_num_from_notation(self.enpassant) # c3 -> 18
@@ -223,45 +164,45 @@ class GameState():
             if rank == 5:
                 print("got here")
                 if file != 1 and board_num - 9 == ep_num:
-                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP"))
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(ep_num), "EP"))
                 elif file != 8 and board_num - 7 == ep_num:
-                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP")) 
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(ep_num), "EP")) 
         else:
             if rank == 4:
                 if file != 8 and board_num + 9 == ep_num:
-                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP"))
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(ep_num), "EP"))
                 elif file != 1 and board_num + 7 == ep_num:
-                    possible_moves.append((current_square, self.get_square_at_board_index(ep_num), "EP"))
+                    possible_moves.append((current_square, Utils.get_square_at_board_index(ep_num), "EP"))
         return possible_moves
 
     def generate_pawn_promotion_moves(self, board_num):
         possible_moves = []
         promotion_pieces = ["Q", "R", "N", "B"]
-        current_square = self.get_square_at_board_index(board_num)
+        current_square = Utils.get_square_at_board_index(board_num)
         rank = self.get_rank(board_num)
         file = self.get_file(board_num)
         if self.whites_turn:
             if rank == 7:
-                if self.get_piece_at_board_index(board_num - 8) == '--':
+                if Utils.get_piece_at_board_index(self, board_num - 8) == '--':
                     for piece in promotion_pieces:
-                        possible_moves.append((current_square, self.get_square_at_board_index(board_num - 8), piece))
-                if file != 1 and self.get_piece_at_board_index(board_num - 9)[0] == 'b':
+                        possible_moves.append((current_square, Utils.get_square_at_board_index(board_num - 8), piece))
+                if file != 1 and Utils.get_piece_at_board_index(self, board_num - 9)[0] == 'b':
                     for piece in promotion_pieces:
-                        possible_moves.append((current_square, self.get_square_at_board_index(board_num - 9), piece))
-                if file != 8 and self.get_piece_at_board_index(board_num - 7)[0] == 'b':
+                        possible_moves.append((current_square, Utils.get_square_at_board_index(board_num - 9), piece))
+                if file != 8 and Utils.get_piece_at_board_index(self, board_num - 7)[0] == 'b':
                     for piece in promotion_pieces:
-                        possible_moves.append((current_square, self.get_square_at_board_index(board_num - 7), piece)) 
+                        possible_moves.append((current_square, Utils.get_square_at_board_index(board_num - 7), piece)) 
         else:
             if rank == 2:
-                if self.get_piece_at_board_index(board_num + 8) == '--':
+                if Utils.get_piece_at_board_index(self, board_num + 8) == '--':
                     for piece in promotion_pieces:
-                        possible_moves.append((current_square, self.get_square_at_board_index(board_num + 8), piece))
-                if file != 8 and self.get_piece_at_board_index(board_num + 9)[0] == 'w':
+                        possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 8), piece))
+                if file != 8 and Utils.get_piece_at_board_index(self, board_num + 9)[0] == 'w':
                     for piece in promotion_pieces:
-                        possible_moves.append((current_square, self.get_square_at_board_index(board_num + 9), piece))
-                if file != 1 and self.get_piece_at_board_index(board_num + 7)[0] == 'w':
+                        possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 9), piece))
+                if file != 1 and Utils.get_piece_at_board_index(self, board_num + 7)[0] == 'w':
                     for piece in promotion_pieces:
-                        possible_moves.append((current_square, self.get_square_at_board_index(board_num + 7), piece)) 
+                        possible_moves.append((current_square, Utils.get_square_at_board_index(board_num + 7), piece)) 
         return possible_moves
 
 
@@ -270,15 +211,15 @@ class GameState():
         possible_moves = []
         start_index = 0 
         end_index = 8
-        piece_on_current_square = self.get_square_at_board_index(board_num)
+        piece_on_current_square = Utils.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index):
             # print(squares_to_edge[board_num][direction_index])
-            if squares_to_edge[board_num][direction_index] > 0:
+            if Utils.squares_to_edge[board_num][direction_index] > 0:
                 target_square = board_num + direction_offsets[direction_index]
                 if self.is_friendly_piece(target_square):
                     # print("piece blocked")
                     continue
-                piece_on_target_square = self.get_square_at_board_index(target_square)
+                piece_on_target_square = Utils.get_square_at_board_index(target_square)
                 # print(piece_on_current_square, piece_on_target_square, direction_index, squares_to_edge[board_num][direction_index])
                 possible_moves.append((piece_on_current_square, piece_on_target_square))
         return possible_moves
@@ -287,7 +228,7 @@ class GameState():
     # need 2 offsets
     def generate_knight_moves(self, board_num):
         possible_moves = []
-        piece_on_current_square = self.get_square_at_board_index(board_num)
+        piece_on_current_square = Utils.get_square_at_board_index(board_num)
         for i in range(len(knight_offsets_x)):
             x = self.get_rank(board_num)
             y = self.get_file(board_num)
@@ -308,7 +249,7 @@ class GameState():
             if self.is_friendly_piece(new_pos):
                 # print("piece blocked, knight")
                 continue
-            piece_on_target_square = self.get_square_at_board_index(new_pos)
+            piece_on_target_square = Utils.get_square_at_board_index(new_pos)
             # print(piece_on_current_square, piece_on_target_square)
             possible_moves.append((piece_on_current_square, piece_on_target_square))
         return possible_moves
@@ -342,41 +283,11 @@ class GameState():
 
 
 
-    def get_image_at_coordinates(self, xcoor, ycoor):
-        return self.board[xcoor][ycoor]
-
-    
-    '''
-    Returns the piece at a specific coordinate
-    input: index ([0, 0])
-    output: piece ('wP')
-    '''
-    def get_piece_at_index(self, index):
-        return self.board[index[0]][index[1]]
-
-    '''
-    Returns the piece at a specific board index
-    input: board_num (54)
-    output: piece ('wP')
-    '''
-    def get_piece_at_board_index(self, board_num):
-        assert board_num >= 0 and board_num <= 63
-        row_value = board_num // 8
-        col_value = board_num % 8
-        return self.board[row_value][col_value] 
-
-    '''
-    Returns the square at a specific board index
-    input: board_num (0)
-    output: (0, 0)
-    '''
-    def get_square_at_board_index(self, board_num):
-        row_value = board_num // 8
-        col_value = board_num % 8
-        return (row_value, col_value)     
-
+### todo:
+### combine these functions, and handle each case in the function, 
+### then move it to Utils and replace instances in Game/Gui
     def is_friendly_piece(self, board_num):
-        piece = self.get_piece_at_board_index(board_num)
+        piece = Utils.get_piece_at_board_index(self, board_num)
         if (('w' in piece and self.whites_turn) or ('b' in piece and not self.whites_turn)):
             return True
         return False
