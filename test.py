@@ -58,10 +58,9 @@ class TestChessMethods(unittest.TestCase):
         # self.assertEqual(count, 197281)
     
     def test_get_board_num_from_notation(self):
-        gs = Game.GameState()
-        self.assertEqual(gs.get_board_num_from_notation("a1"), 56)
-        self.assertEqual(gs.get_board_num_from_notation("h3"), 47)
-        self.assertEqual(gs.get_board_num_from_notation("e4"), 36)
+        self.assertEqual(Utils.get_board_num_from_notation("a1"), 56)
+        self.assertEqual(Utils.get_board_num_from_notation("h3"), 47)
+        self.assertEqual(Utils.get_board_num_from_notation("e4"), 36)
 
 if __name__ == '__main__':
     unittest.main()

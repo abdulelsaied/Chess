@@ -85,9 +85,9 @@ def main():
                     draggable = False
                 else:
                     move = Game.Move(selected_square, current_square, gamestate.board)
-                    print(move.get_chess_notation())
+                    print(Utils.get_chess_notation(move))
                     gamestate.make_move(move)
-                    gamestate.print_turn()
+                    Utils.print_turn(gamestate)
                     selected_square = ()
                     clickable = False
                     draggable = False
