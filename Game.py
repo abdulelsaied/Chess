@@ -112,7 +112,7 @@ class GameState():
             else:
                 print("Not a valid move!")
                 print(((move.start_row, move.start_col), (move.end_row, move.end_col)))
-        print(self.enpassant)
+        # print(self.enpassant)
 
     def undo_move(self):
         if self.move_log:
@@ -168,9 +168,6 @@ class GameState():
                 if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
                     # append move with capture flag
                     break
-                else:
-                    possible_moves.append((piece_on_current_square, piece_on_target_square, ""))
-
         return possible_moves
 
 
