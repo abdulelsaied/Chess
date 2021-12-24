@@ -78,12 +78,29 @@ class GameState():
 
     def make_move(self, move):
         ### move must start with current players piece, end on empty square or an opponents piece
-        
+        ### need to add flags to each move:
+        ### DP --> double pawn move --> save the square that is enpassant eligible. if the next flag isnt DP, clear this flag
+        ### EP --> enpassant --> different pawn capture movement.
+        ### KC --> kingside castle --> ensure that move generated from king function is correct, different king/rook movement
+        ### QC --> queenside castle
+        ### for both castling moves, the second_piece must be 2 squares from the king 
+        ### NM --> normal move, do nothing special.
+        ### PC --> piece captured, can add sound to this later.
+        ### PQ --> pawn promotion to a queen
+        ### PR --> pawn promotion to a rook
+        ### PN --> pawn promotion to a Knight
+        ### PB --> pawn promotion to a bishop
+
+        ## change legal_moves to be a dictionary, where key is the tuple of start/end square, and value is the corresponding flag. 
+
+        ### legal moves responsible for setting flags, and we only check if actual squares match input
+        ### in the case of pawn promotion, we handle the case in a special manner, maybe doing some of the logic in Gui.py?
+
+
         first_piece = move.piece_moved
         second_piece = move.piece_captured
         if self.is_friendly_piece_string(first_piece) and (not self.is_friendly_piece_string(second_piece) or second_piece == '--'):
-            ### validate move made here
-            ### need to fix pawn promotion and add en pessant
+
             legal_moves = self.generate_pseudo_legal_moves()
             # print("Number of moves: ", len(legal_moves))
             # print("Legal moves: ", legal_moves)
@@ -95,6 +112,7 @@ class GameState():
             else:
                 print("Not a valid move!")
                 print(((move.start_row, move.start_col), (move.end_row, move.end_col)))
+        print(self.enpassant)
 
     def undo_move(self):
         if self.move_log:
@@ -139,7 +157,6 @@ class GameState():
         piece_on_current_square = self.get_square_at_board_index(board_num)
         for direction_index in range(start_index, end_index): ## end_index + 1?
             for n in range(squares_to_edge[board_num][direction_index]):
-                # print(direction_index, n)
                 target_square = board_num + direction_offsets[direction_index] * (n + 1)
                 if (self.is_friendly_piece(target_square)):
                     # print("piece blocked")
@@ -149,11 +166,15 @@ class GameState():
                 # possible_moves.append(Move(piece_on_current_square, piece_on_target_square, self.board))
                 possible_moves.append((piece_on_current_square, piece_on_target_square))
                 if (not self.is_friendly_piece(target_square) and self.get_piece_at_board_index(target_square) != '--'):
-                    # print("opponent piece in the way!")
-                    # print(self.get_piece_at_board_index(target_square))
+                    # append move with capture flag
                     break
+                else:
+                    possible_moves.append((piece_on_current_square, piece_on_target_square, ""))
+
         return possible_moves
 
+
+    # problem with pawn moves
     def generate_pawn_moves(self, board_num):
         possible_moves = []
         current_square = self.get_square_at_board_index(board_num)
@@ -161,12 +182,9 @@ class GameState():
         file = self.get_file(board_num)
         # if whites turn, check first if theres an empty space up left right, including check for edges
         # then, check if the piece is on the 2nd rank, eligible for 2 pawn moves 
-        # 
-        # add en pessant
-        # 
         if (self.whites_turn):
             if rank == 2:
-                if self.get_piece_at_board_index(board_num - 16) == '--':
+                if self.get_piece_at_board_index(board_num - 8) == '--' and self.get_piece_at_board_index(board_num - 16) == '--':
                     target_square = self.get_square_at_board_index(board_num - 16)
                     possible_moves.append((current_square, target_square)) 
             if rank == 7:
@@ -182,7 +200,7 @@ class GameState():
                 # if self.enpassant != "-" and rank == 5 and (self.get_board_num_from_notation(self.enpassant)
         else:
             if rank == 7:
-                if self.get_piece_at_board_index(board_num + 16) == '--':
+                if self.get_piece_at_board_index(board_num + 8) == '--' and self.get_piece_at_board_index(board_num + 16) == '--':
                     possible_moves.append((current_square, self.get_square_at_board_index(board_num + 16)))
             if rank == 2:
                 possible_moves += self.generate_pawn_promotion_moves(board_num)
@@ -308,10 +326,21 @@ class GameState():
         legal_moves = self.generate_pseudo_legal_moves()
         num_pos = 0
         for legal_move in legal_moves:
-            self.make_move(Move(legal_move[0], legal_move[1], self.board))
+            move_to_make = Move(legal_move[0], legal_move[1], self.board)
+            self.make_move(move_to_make)
             num_pos += self.count_moves(depth - 1)
             self.undo_move()
         return num_pos
+
+    def count_moves_set(self, depth):
+        move_dict = {}
+        legal_moves = self.generate_pseudo_legal_moves()
+        for legal_move in legal_moves:
+            move_to_make = Move(legal_move[0], legal_move[1], self.board)
+            self.make_move(move_to_make)
+            move_dict[move_to_make.get_chess_notation()] = self.count_moves(depth - 1)
+            self.undo_move()
+        return move_dict
 
 
 
@@ -388,6 +417,10 @@ class GameState():
         new_rank = ranks_to_rows[notation[1]]
         new_file = files_to_cols[notation[0]]
         return new_rank * 8 + new_file
+
+    ## function to convert board_num to e4
+    def get_notation_from_board_num(self, board_num):
+        return cols_to_files[self.get_file(board_num) - 1] + rows_to_ranks[self.get_rank(board_num) - 1]
     
 
 
