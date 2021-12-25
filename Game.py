@@ -29,22 +29,61 @@ class GameState():
 
         ### in the case of pawn promotion, we handle the case in a special manner, maybe doing some of the logic in Gui.py?
         ### maybe assume queen promotion always for now, but make sure to count all possibilities in count_moves.
+        ### add flag to move log, containing undo information
 
         first_piece = move.piece_moved
         second_piece = move.piece_captured
         if Utils.is_friendly_piece(self, first_piece) and (not Utils.is_friendly_piece(self, second_piece) or second_piece == '--'):
             legal_moves = self.generate_pseudo_legal_moves()
-            print("Number of moves: ", len(legal_moves))
-            print("Legal moves: ", legal_moves)
-            if ((move.start_row, move.start_col), (move.end_row, move.end_col)) in legal_moves:  
-                ### add more conditions based on the value of dictionary entry
-                self.board[move.start_row][move.start_col] = '--'
-                self.board[move.end_row][move.end_col] = move.piece_moved
+            # print("Number of moves: ", len(legal_moves))
+            # print("Legal moves: ", legal_moves)
+            move_to_make = ((move.start_row, move.start_col), (move.end_row, move.end_col))
+
+            if move_to_make in legal_moves:
+                flag = legal_moves[move_to_make] # can have multiple flags.
+                start_x = move.start_row
+                start_y = move.start_col
+                end_x = move.end_row
+                end_y = move.end_col
+                end_piece = move.piece_moved
+                turn_char = "w"
+                if not self.whites_turn:
+                    turn_char = "b"
+                set_enpassant = False
+                if len(flag) > 1: # pawn promotion, multiple options
+                    end_piece = turn_char + "Q"
+                else:
+                    if flag[0] == "DP":
+                        assert move.start_col == move.end_col
+                        set_enpassant = True
+                    elif flag[0] == "EP":
+                        assert self.enpassant != "-"
+                        self.board[start_x][start_y + (end_y - start_y)] = "--"
+                        print(start_x)
+                        print(end_y)
+                        print(start_y)
+                        end_x, end_y = Utils.get_square_at_board_index(Utils.get_board_num_from_notation(self.enpassant))
+                        self.enpassant = "-"
+                    elif flag[0] == "KC":
+                        self.board[end_x][end_y + 1] = "--"
+                        self.board[end_x][end_y - 1] = turn_char + "R"
+                        ### set correct value of kingside castle abilities here.
+                    elif flag[0] == "QC":
+                        self.board[end_x][end_y - 2] == "--"
+                        self.board[end_x][end_y + 1] == turn_char + "R"
+                        ### set correct value of queenside castle abilities here.
+                self.board[start_x][start_y] = '--'
+                self.board[end_x][end_y] = end_piece
                 self.move_log.append(move)
                 self.whites_turn = not self.whites_turn
+                if set_enpassant:
+                    self.enpassant = Utils.get_rank_file(min(move.start_row, move.end_row) + 1, move.start_col)
+                    set_enpassant = False
+                else:
+                    self.enpassant = "-"
             else:
                 print("Not a valid move!")
-                print(((move.start_row, move.start_col), (move.end_row, move.end_col)))
+            print(self.enpassant)
 
     # need to make sure undoing a move restores values like enpassant, castling rights, etc
     # after popping off the move, check its flag, and undo and values changed due to that flag.
