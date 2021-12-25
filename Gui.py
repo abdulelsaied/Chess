@@ -2,7 +2,6 @@ import pygame as p
 import Game
 import Utils
 
-#constants
 WIDTH = HEIGHT = 512
 ROWS = COLS = 8
 SQUARE_LENGTH = HEIGHT // ROWS 
@@ -13,7 +12,6 @@ COLORS = ['#ebecd0', '#779556']
 
 WIN = p.display.set_mode((WIDTH, HEIGHT))
 p.display.set_caption('Chess Project')
-
 
 def main():
     p.init()
@@ -27,10 +25,6 @@ def main():
     draggable = False
     drag_now = False
     image_to_drag = ""
-
-
-
-
     '''
     After each mouseclick, coordinates are captured in a tuple current_square
     The piece on that square is square_string
@@ -46,8 +40,6 @@ def main():
     if selected_square, there are __ possibilities:
         letting go on same square, should set clickable to true and selected_square to same square
         letting go on different square, make move between selected_square and current square and reset all variables.
-
-
     '''
     while run:
         clock.tick(FPS)
@@ -106,7 +98,6 @@ def main():
         if p.mouse.get_pressed()[0]:
             draw_dragged_piece(screen, mx, my, image_to_drag, drag_now)
         p.display.flip()
-
 
 def draw_gamestate(screen, gamestate):
     draw_board(screen)

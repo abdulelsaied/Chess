@@ -1,5 +1,3 @@
-### file to contain helper functions useful in other classes.
-
 squares_to_edge = {}
 ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4, '5': 3, '6': 2, '7': 1, '8': 0}
 rows_to_ranks = {i: j for j, i in ranks_to_rows.items()}
@@ -8,7 +6,6 @@ cols_to_files = {i: j for j, i in files_to_cols.items()}
 direction_offsets = [-8, 8, 1, -1, 7, -7, 9, -9]
 knight_offsets_x = [2, 1, -1, -2, -2, -1, 1, 2]
 knight_offsets_y = [1, 2, 2, 1, -1, -2, -2, -1]
-
 
 """
 Returns an array containing distances to edge for each square
@@ -84,8 +81,6 @@ def get_piece_at_board_index(gamestate, board_num):
     col_value = board_num % 8
     return gamestate.board[row_value][col_value] 
 
-
-
 '''
 Returns the square at a specific board index
 input: board_num (0)
@@ -95,13 +90,7 @@ def get_square_at_board_index(board_num):
     row_value = board_num // 8
     col_value = board_num % 8
     return (row_value, col_value)    
-
-
-
-
-### todo:
-### combine these functions, and handle each case in the function, 
-### then move it to Utils and replace instances in Game/Gui
+    
 def is_friendly_piece(gamestate, piece):
     if isinstance(piece, int):
         piece = get_piece_at_board_index(gamestate, piece)

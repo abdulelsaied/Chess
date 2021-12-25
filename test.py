@@ -53,7 +53,6 @@ class TestChessMethods(unittest.TestCase):
         # self.assertEqual(count["b1c3"], 440)
         # self.assertEqual(count["g1f3"], 440)
         # self.assertEqual(count["g1h3"], 400)
-
         # count = gs.count_moves(4)
         # self.assertEqual(count, 197281)
     
