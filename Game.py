@@ -9,9 +9,25 @@ class GameState():
         self.move_log = []
         self.enpassant = [self.enpassant] # turn it into a 1 element array
         self.last_piece_captured = []
-        ### add a last_piece_captured list, like move_log
 
-    def make_move(self, move):
+    def take_turn(self, move):
+        first_piece = move.piece_moved
+        second_piece = move.piece_captured
+        if Utils.is_friendly_piece(self, first_piece) and (not Utils.is_friendly_piece(self, second_piece) or second_piece == '--'):
+            legal_moves = self.generate_legal_moves()
+            move_to_make = ((move.start_row, move.start_col), (move.end_row, move.end_col))
+            # incorrectly filtering moves
+            print(legal_moves.keys())
+            print(move_to_make)
+            if move_to_make in legal_moves:
+                flag = legal_moves[move_to_make] # can have multiple flags.
+                self.make_move(move, flag)
+            else: 
+                print("not a legal move")
+        else:
+            print("Not a move!")
+
+    def make_move(self, move, flag):
         ### move must start with current players piece, end on empty square or an opponents piece
         ### need to add flags to each move:
         ### DP --> double pawn move --> save the square that is enpassant eligible. if the next flag isnt DP, clear this flag
@@ -34,68 +50,51 @@ class GameState():
         ### undoing a PQ --> undo move normally, pop from queue if flag contains PC
 
         ### legal moves responsible for setting flags, and we only check if actual squares match input
-
         ### maybe assume queen promotion always for now, but make sure to count all possibilities in count_moves.
 
-
-        ### add flag to move log, containing undo information
-        ### format of this info?
-
-        first_piece = move.piece_moved
-        second_piece = move.piece_captured
-        if Utils.is_friendly_piece(self, first_piece) and (not Utils.is_friendly_piece(self, second_piece) or second_piece == '--'):
-            legal_moves = self.generate_pseudo_legal_moves()
-            # print("Number of moves: ", len(legal_moves))
-            # print("Legal moves: ", legal_moves)
-            move_to_make = ((move.start_row, move.start_col), (move.end_row, move.end_col))
-
-            if move_to_make in legal_moves:
-                flag = legal_moves[move_to_make] # can have multiple flags.
-                start_x = move.start_row
-                start_y = move.start_col
-                end_x = move.end_row
-                end_y = move.end_col
-                end_piece = move.piece_moved
-                turn_char = "w"
-                if not self.whites_turn:
-                    turn_char = "b"
-                set_enpassant = False
-                if len(flag) > 1: 
-                    end_piece = turn_char + "Q"
-                    if "PC" in flag:
-                        self.last_piece_captured.append(self.board[end_x][end_y])
-                else:
-                    if flag[0] == "DP":
-                        assert move.start_col == move.end_col
-                        set_enpassant = True
-                    elif flag[0] == "EP":
-                        assert self.enpassant[-1] != "-"
-                        self.last_piece_captured.append(self.board[start_x][start_y + (end_y - start_y)])
-                        self.board[start_x][start_y + (end_y - start_y)] = "--"
-                        end_x, end_y = Utils.get_square_at_board_index(Utils.get_board_num_from_notation(self.enpassant[-1]))
-                    elif flag[0] == "KC":
-                        self.board[end_x][end_y + 1] = "--"
-                        self.board[end_x][end_y - 1] = turn_char + "R"
-                        replace_char = "K" if self.whites_turn else "k"
-                        self.castling = self.castling.replace(replace_char, "")
-                    elif flag[0] == "QC":
-                        self.board[end_x][end_y - 2] = "--"
-                        self.board[end_x][end_y + 1] = turn_char + "R"
-                        replace_char = "Q" if self.whites_turn else "q"
-                        self.castling = self.castling.replace(replace_char, "")
-                    elif flag[0] == "PC":
-                        self.last_piece_captured.append(self.board[end_x][end_y])
-                self.board[start_x][start_y] = '--'
-                self.board[end_x][end_y] = end_piece
-                self.move_log.append((move, flag))
-                self.whites_turn = not self.whites_turn
-                if set_enpassant:
-                    self.enpassant.append(Utils.get_rank_file(min(move.start_row, move.end_row) + 1, move.start_col))
-                    set_enpassant = False
-                else:
-                    self.enpassant.append("-")
-            else:
-                print("Not a valid move!")
+        start_x = move.start_row
+        start_y = move.start_col
+        end_x = move.end_row
+        end_y = move.end_col
+        end_piece = move.piece_moved
+        turn_char = "w"
+        if not self.whites_turn:
+            turn_char = "b"
+        set_enpassant = False
+        if len(flag) > 1: 
+            end_piece = turn_char + "Q"
+            if "PC" in flag:
+                self.last_piece_captured.append(self.board[end_x][end_y])
+        else:
+            if flag[0] == "DP":
+                assert move.start_col == move.end_col
+                set_enpassant = True
+            elif flag[0] == "EP":
+                assert self.enpassant[-1] != "-"
+                self.last_piece_captured.append(self.board[start_x][start_y + (end_y - start_y)])
+                self.board[start_x][start_y + (end_y - start_y)] = "--"
+                end_x, end_y = Utils.get_square_at_board_index(Utils.get_board_num_from_notation(self.enpassant[-1]))
+            elif flag[0] == "KC":
+                self.board[end_x][end_y + 1] = "--"
+                self.board[end_x][end_y - 1] = turn_char + "R"
+                replace_char = "K" if self.whites_turn else "k"
+                self.castling = self.castling.replace(replace_char, "")
+            elif flag[0] == "QC":
+                self.board[end_x][end_y - 2] = "--"
+                self.board[end_x][end_y + 1] = turn_char + "R"
+                replace_char = "Q" if self.whites_turn else "q"
+                self.castling = self.castling.replace(replace_char, "")
+            elif flag[0] == "PC":
+                self.last_piece_captured.append(self.board[end_x][end_y])
+        self.board[start_x][start_y] = '--'
+        self.board[end_x][end_y] = end_piece
+        self.move_log.append((move, flag))
+        self.whites_turn = not self.whites_turn
+        if set_enpassant:
+            self.enpassant.append(Utils.get_rank_file(min(move.start_row, move.end_row) + 1, move.start_col))
+            set_enpassant = False
+        else:
+            self.enpassant.append("-")
 
     # need to make sure undoing a move restores values like enpassant, castling rights, etc
     # after popping off the move, check its flag, and undo and values changed due to that flag.
@@ -317,7 +316,7 @@ class GameState():
         legal_moves = defaultdict(lambda: [])
         for pseudo_legal_move, flag in pseudo_legal_moves.items():
             move_to_make = Move(pseudo_legal_move[0], pseudo_legal_move[1], self.board)
-            self.make_move(move_to_make)
+            self.make_move(move_to_make, flag)
             responses = self.generate_pseudo_legal_moves()
             is_legal = True
             for response, response_flag in responses.items():
@@ -338,7 +337,7 @@ class GameState():
         ## not counting when a move has multiple flags, wont be accurate for pawn promotion
         for legal_move, flag in legal_moves.items():
             move_to_make = Move(legal_move[0], legal_move[1], self.board)
-            self.make_move(move_to_make)
+            self.make_move(move_to_make, flag)
             num_pos += self.count_moves(depth - 1)
             ### undoing a move may not be accurate, need to restore values back to what they were. 
             self.undo_move()
@@ -349,7 +348,7 @@ class GameState():
         legal_moves = self.generate_legal_moves()
         for legal_move, flag in legal_moves.items():
             move_to_make = Move(legal_move[0], legal_move[1], self.board)
-            self.make_move(move_to_make)
+            self.make_move(move_to_make, flag)
             move_dict[Utils.get_chess_notation(move_to_make)] = self.count_moves(depth - 1)
             self.undo_move()
         return move_dict

@@ -78,7 +78,7 @@ def main():
                 else:
                     move = Game.Move(selected_square, current_square, gamestate.board)
                     print(Utils.get_chess_notation(move))
-                    gamestate.make_move(move)
+                    gamestate.take_turn(move)
                     Utils.print_turn(gamestate)
                     selected_square = ()
                     clickable = False
