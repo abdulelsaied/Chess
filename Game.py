@@ -7,7 +7,9 @@ class GameState():
         Utils.precompute_data()
         self.board, self.whites_turn, self.castling, self.enpassant, self.halfmove, self.fullmove = Utils.fen_to_array(fen_string)
         self.move_log = []
-
+        self.enpassant = [self.enpassant] # turn it into a 1 element array
+        self.last_piece_captured = []
+        ### add a last_piece_captured list, like move_log
 
     def make_move(self, move):
         ### move must start with current players piece, end on empty square or an opponents piece
@@ -23,13 +25,21 @@ class GameState():
         ### PR --> pawn promotion to a rook
         ### PN --> pawn promotion to a Knight
         ### PB --> pawn promotion to a bishop
-        ### note: each piece for pawn promotion is valid assuming pawn promotion itself is valid.
+
+        ### undoing a dp --> reset square that is enpassant eligible back
+        ### undoing an ep --> undo move as normal and restore the last_piece_captured next to new pawn pos, pop 
+        ### undoing a KC --> undo king move, move rook back, and add letter back to self.castling
+        ### undoing a QC --> undo king move, move rook back, and add letter back to self.castling
+        ### undoing a PC --> pop last_piece_captured off of list 
+        ### undoing a PQ --> undo move normally, pop from queue if flag contains PC
 
         ### legal moves responsible for setting flags, and we only check if actual squares match input
 
-        ### in the case of pawn promotion, we handle the case in a special manner, maybe doing some of the logic in Gui.py?
         ### maybe assume queen promotion always for now, but make sure to count all possibilities in count_moves.
+
+
         ### add flag to move log, containing undo information
+        ### format of this info?
 
         first_piece = move.piece_moved
         second_piece = move.piece_captured
@@ -50,49 +60,85 @@ class GameState():
                 if not self.whites_turn:
                     turn_char = "b"
                 set_enpassant = False
-                if len(flag) > 1: # pawn promotion, multiple options
+                if len(flag) > 1: 
                     end_piece = turn_char + "Q"
+                    if "PC" in flag:
+                        self.last_piece_captured.append(self.board[end_x][end_y])
                 else:
                     if flag[0] == "DP":
                         assert move.start_col == move.end_col
                         set_enpassant = True
                     elif flag[0] == "EP":
-                        assert self.enpassant != "-"
+                        assert self.enpassant[-1] != "-"
+                        self.last_piece_captured.append(self.board[start_x][start_y + (end_y - start_y)])
                         self.board[start_x][start_y + (end_y - start_y)] = "--"
-                        print(start_x)
-                        print(end_y)
-                        print(start_y)
-                        end_x, end_y = Utils.get_square_at_board_index(Utils.get_board_num_from_notation(self.enpassant))
-                        self.enpassant = "-"
+                        end_x, end_y = Utils.get_square_at_board_index(Utils.get_board_num_from_notation(self.enpassant[-1]))
                     elif flag[0] == "KC":
                         self.board[end_x][end_y + 1] = "--"
                         self.board[end_x][end_y - 1] = turn_char + "R"
-                        ### set correct value of kingside castle abilities here.
+                        replace_char = "K" if self.whites_turn else "k"
+                        self.castling = self.castling.replace(replace_char, "")
                     elif flag[0] == "QC":
-                        self.board[end_x][end_y - 2] == "--"
-                        self.board[end_x][end_y + 1] == turn_char + "R"
-                        ### set correct value of queenside castle abilities here.
+                        self.board[end_x][end_y - 2] = "--"
+                        self.board[end_x][end_y + 1] = turn_char + "R"
+                        replace_char = "Q" if self.whites_turn else "q"
+                        self.castling = self.castling.replace(replace_char, "")
+                    elif flag[0] == "PC":
+                        self.last_piece_captured.append(self.board[end_x][end_y])
                 self.board[start_x][start_y] = '--'
                 self.board[end_x][end_y] = end_piece
-                self.move_log.append(move)
+                self.move_log.append((move, flag))
                 self.whites_turn = not self.whites_turn
                 if set_enpassant:
-                    self.enpassant = Utils.get_rank_file(min(move.start_row, move.end_row) + 1, move.start_col)
+                    self.enpassant.append(Utils.get_rank_file(min(move.start_row, move.end_row) + 1, move.start_col))
                     set_enpassant = False
                 else:
-                    self.enpassant = "-"
+                    self.enpassant.append("-")
             else:
                 print("Not a valid move!")
-            print(self.enpassant)
+            print("Pieces captured: ", self.last_piece_captured)
+            print("En passant history: ", self.enpassant)
+            print("Move log: ", self.move_log)
 
     # need to make sure undoing a move restores values like enpassant, castling rights, etc
     # after popping off the move, check its flag, and undo and values changed due to that flag.
     def undo_move(self):
         if self.move_log:
-            move = self.move_log.pop()
+            move, flag = self.move_log.pop()
+            turn_char = "b"
+            if not self.whites_turn:
+                turn_char = "w"
+            if len(flag) > 1:
+                if "PC" in flag:
+                    self.last_piece_captured.pop()
+            else:
+                if flag[0] == "DP":
+                    pass
+                elif flag[0] == "EP":
+                ## get square next to , replace with pawn
+                    pawn_captured = self.last_piece_captured[-1]
+                    self.board[move.start_row][move.start_col + (move.end_col - move.start_col)] = pawn_captured
+                    self.last_piece_captured.pop()
+                elif flag[0] == "KC":
+                ## undo the rook move
+                    self.board[move.end_row][move.end_col + 1] = turn_char + "R"
+                    self.board[move.end_row][move.end_col - 1] = "--"
+                    replace_char = "K" if not self.whites_turn else "k"
+                    self.castling += replace_char
+                elif flag[0] == "QC":
+                    self.board[move.end_row][move.end_col - 2] = turn_char + "R"
+                    self.board[move.end_row][move.end_col + 1] = "--"
+                    replace_char = "Q" if not self.whites_turn else "q"
+                    self.castling += replace_char
+                elif flag[0] == "PC":
+                    self.last_piece_captured.pop()
+
             self.board[move.start_row][move.start_col] = move.piece_moved
             self.board[move.end_row][move.end_col] = move.piece_captured
             self.whites_turn = not self.whites_turn
+
+            self.enpassant.pop()
+            print("After undo, castling: ", self.castling)
 
     ### each generation function is responsible for mutating the 1 dictionary keeping track of moves and flags
     def generate_pseudo_legal_moves(self):
@@ -132,7 +178,6 @@ class GameState():
                 else:
                     possible_moves[(piece_on_current_square, piece_on_target_square)] = ["NM"]
 
-
     def generate_pawn_moves(self, board_num, possible_moves):
         current_square = Utils.get_square_at_board_index(board_num)
         rank = Utils.get_rank(board_num)
@@ -168,12 +213,12 @@ class GameState():
 
     ### enpassant wont work until in make_moves, we set the correct self.enpassant value directly after a double pawn push.
     def generate_en_passant_moves(self, board_num, possible_moves):
-        if self.enpassant == '-':
+        if self.enpassant[-1] == '-':
             return 
         current_square = Utils.get_square_at_board_index(board_num)
         rank = Utils.get_rank(board_num)
         file = Utils.get_file(board_num)
-        ep_num = Utils.get_board_num_from_notation(self.enpassant) # c3 -> 18
+        ep_num = Utils.get_board_num_from_notation(self.enpassant[-1]) # c3 -> 18
         if self.whites_turn:
             if rank == 5:
                 if file != 1 and board_num - 9 == ep_num:
@@ -201,9 +246,11 @@ class GameState():
                 if file != 1 and Utils.get_piece_at_board_index(self, board_num - 9)[0] == 'b':
                     for piece in promotion_pieces:
                         possible_moves[(current_square, Utils.get_square_at_board_index(board_num - 9))] += ["P" + piece]
+                    possible_moves[(current_square, Utils.get_square_at_board_index(board_num - 9))] += ["PC"]
                 if file != 8 and Utils.get_piece_at_board_index(self, board_num - 7)[0] == 'b':
                     for piece in promotion_pieces:
                         possible_moves[(current_square, Utils.get_square_at_board_index(board_num - 7))] += ["P" + piece]
+                    possible_moves[(current_square, Utils.get_square_at_board_index(board_num - 7))] += ["PC"]
         else:
             if rank == 2:
                 if Utils.get_piece_at_board_index(self, board_num + 8) == '--':
@@ -212,9 +259,11 @@ class GameState():
                 if file != 8 and Utils.get_piece_at_board_index(self, board_num + 9)[0] == 'w':
                     for piece in promotion_pieces:
                         possible_moves[(current_square, Utils.get_square_at_board_index(board_num + 9))] += ["P" + piece]
+                    possible_moves[(current_square, Utils.get_square_at_board_index(board_num + 9))] += ["PC"]
                 if file != 1 and Utils.get_piece_at_board_index(self, board_num + 7)[0] == 'w':
                     for piece in promotion_pieces:
                         possible_moves[(current_square, Utils.get_square_at_board_index(board_num + 7))] += ["P" + piece]
+                    possible_moves[(current_square, Utils.get_square_at_board_index(board_num + 7))] += ["PC"]
 
     def generate_king_moves(self, board_num, possible_moves):
         start_index = 0 
@@ -231,6 +280,18 @@ class GameState():
                     possible_moves[(piece_on_current_square, piece_on_target_square)] = ["PC"]
                 else:
                     possible_moves[(piece_on_current_square, piece_on_target_square)] = ["NM"]
+        ### castling, need to add concept of check in this. 
+        if self.whites_turn:
+            if "K" in self.castling and self.board[7][4] == "wK" and self.board[7][5] == "--" and self.board[7][6] == "--" and self.board[7][7] == "wR":
+                possible_moves[((7, 4), (7, 6))] = ["KC"]
+            if "Q" in self.castling and self.board[7][4] == "wK" and self.board[7][3] == "--" and self.board[7][2] == "--" and self.board[7][1] == "--" and self.board[7][0] == "wR":
+                possible_moves[((7, 4), (7, 2))] = ["QC"]
+        else:
+            if "k" in self.castling and self.board[0][4] == "bK" and self.board[0][5] == "--" and self.board[0][6] == "--" and self.board[0][7] == "bR":
+                possible_moves[((0, 4), (0, 6))] = ["KC"]
+            if "q" in self.castling and self.board[0][4] == "bK" and self.board[0][3] == "--" and self.board[0][2] == "--" and self.board[0][1] == "--" and self.board[0][0] == "bR":
+                possible_moves[((0, 4), (0, 2))] = ["QC"]
+
 
     def generate_knight_moves(self, board_num, possible_moves):
         piece_on_current_square = Utils.get_square_at_board_index(board_num)
@@ -265,6 +326,7 @@ class GameState():
             move_to_make = Move(legal_move[0], legal_move[1], self.board)
             self.make_move(move_to_make)
             num_pos += self.count_moves(depth - 1)
+            ### undoing a move may not be accurate, need to restore values back to what they were. 
             self.undo_move()
         return num_pos
 
