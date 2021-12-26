@@ -96,9 +96,6 @@ class GameState():
                     self.enpassant.append("-")
             else:
                 print("Not a valid move!")
-            print("Pieces captured: ", self.last_piece_captured)
-            print("En passant history: ", self.enpassant)
-            print("Move log: ", self.move_log)
 
     # need to make sure undoing a move restores values like enpassant, castling rights, etc
     # after popping off the move, check its flag, and undo and values changed due to that flag.
@@ -138,7 +135,6 @@ class GameState():
             self.whites_turn = not self.whites_turn
 
             self.enpassant.pop()
-            print("After undo, castling: ", self.castling)
 
     ### each generation function is responsible for mutating the 1 dictionary keeping track of moves and flags
     def generate_pseudo_legal_moves(self):
@@ -313,13 +309,31 @@ class GameState():
             else:
                 possible_moves[(piece_on_current_square, piece_on_target_square)] = ["NM"]
 
+    ## for each pseudo legal move, play it and calculute all of opponents pseudo legal moves.
+    ## if any of the responding moves results in the capture of the king, or capture of rook in the case of castling, then the move is invalid
+    ## this forces moves to stop a check if a player is currently in check.
     def generate_legal_moves(self):
-        pass
+        pseudo_legal_moves = self.generate_pseudo_legal_moves()
+        legal_moves = defaultdict(lambda: [])
+        for pseudo_legal_move, flag in pseudo_legal_moves.items():
+            move_to_make = Move(pseudo_legal_move[0], pseudo_legal_move[1], self.board)
+            self.make_move(move_to_make)
+            responses = self.generate_pseudo_legal_moves()
+            is_legal = True
+            for response, response_flag in responses.items():
+                assert isinstance(response, tuple)
+                if "PC" in response_flag and "K" in Utils.get_piece_at_index(self, response[1]):
+                    is_legal = False
+            if is_legal:
+                legal_moves[pseudo_legal_move] = flag
+            self.undo_move()
+        return legal_moves
+
 
     def count_moves(self, depth):
         if depth == 0:
             return 1
-        legal_moves = self.generate_pseudo_legal_moves()
+        legal_moves = self.generate_legal_moves()
         num_pos = 0
         ## not counting when a move has multiple flags, wont be accurate for pawn promotion
         for legal_move, flag in legal_moves.items():
@@ -332,7 +346,7 @@ class GameState():
 
     def count_moves_set(self, depth):
         move_dict = {}
-        legal_moves = self.generate_pseudo_legal_moves()
+        legal_moves = self.generate_legal_moves()
         for legal_move, flag in legal_moves.items():
             move_to_make = Move(legal_move[0], legal_move[1], self.board)
             self.make_move(move_to_make)
@@ -343,6 +357,8 @@ class GameState():
 class Move():
     
     def __init__(self, start_square, end_square, board):
+        # print(start_square)
+        # print(end_square)
         assert start_square 
         assert end_square
         self.start_row = start_square[0]
