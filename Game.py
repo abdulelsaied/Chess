@@ -17,15 +17,18 @@ class GameState():
             legal_moves = self.generate_legal_moves()
             move_to_make = ((move.start_row, move.start_col), (move.end_row, move.end_col))
             # incorrectly filtering moves
-            print(legal_moves.keys())
-            print(move_to_make)
+            if len(legal_moves) == 0:
+                Utils.print_winner(self)
+                quit()
             if move_to_make in legal_moves:
                 flag = legal_moves[move_to_make] # can have multiple flags.
                 self.make_move(move, flag)
+                return flag
             else: 
                 print("not a legal move")
         else:
             print("Not a move!")
+        return []
 
     def make_move(self, move, flag):
         ### move must start with current players piece, end on empty square or an opponents piece

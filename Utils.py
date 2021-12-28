@@ -90,7 +90,7 @@ def get_square_at_board_index(board_num):
     row_value = board_num // 8
     col_value = board_num % 8
     return (row_value, col_value)    
-    
+
 def is_friendly_piece(gamestate, piece):
     if isinstance(piece, int):
         piece = get_piece_at_board_index(gamestate, piece)
@@ -136,3 +136,9 @@ def print_turn(gamestate):
         print('Whites turn')
     else:
         print('Blacks turn')
+
+def print_winner(gamestate):
+    if gamestate.whites_turn:
+        print("Checkmate! Black wins!")
+    else:
+        print("Checkmate! White wins!")

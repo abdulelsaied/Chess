@@ -26,7 +26,7 @@ class TestChessMethods(unittest.TestCase):
         self.assertEqual(white_to_move, False)
 
     def test_count_moves(self):
-        gs = Game.GameState()
+        # gs = Game.GameState()
         # count = gs.count_moves(1)
         # self.assertEqual(count, 20)
         # count = gs.count_moves(2)
@@ -53,13 +53,23 @@ class TestChessMethods(unittest.TestCase):
         # self.assertEqual(count["b1c3"], 440)
         # self.assertEqual(count["g1f3"], 440)
         # self.assertEqual(count["g1h3"], 400)
-        count = gs.count_moves(4)
-        self.assertEqual(count, 197281)
+        # count = gs.count_moves(4)
+        # self.assertEqual(count, 197281)
+        pass
     
     def test_get_board_num_from_notation(self):
         self.assertEqual(Utils.get_board_num_from_notation("a1"), 56)
         self.assertEqual(Utils.get_board_num_from_notation("h3"), 47)
         self.assertEqual(Utils.get_board_num_from_notation("e4"), 36)
+        
+    def test_position_two(self):
+        gs = Game.GameState("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0")
+        count = gs.count_moves(1)
+        self.assertEqual(count, 48)
+        count = gs.count_moves(2)
+        self.assertEqual(count, 2039)
+        count = gs.count_moves(3)
+        self.assertEqual(count, 97862)
 
 if __name__ == '__main__':
     unittest.main()
