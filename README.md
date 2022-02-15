@@ -16,11 +16,20 @@ The GUI is powered by [PyGame](https://www.pygame.org/wiki/about).
 
 1. Install the latest verssion of [Python](https://www.python.org/downloads/).
 
+2. Install [pip](https://pip.pypa.io/en/stable/installation/).
+
+3. Install [PyGame](https://www.pygame.org/wiki/GettingStarted)
+
+`python3 -m pip install -U pygame --user`
+
+4. Clone this repository. 
+
+5. Navigate to the directory that contains Gui.py
+
+6. Run the GUI:
+
+`python3 gui.py`
+
 ## Usage <a name = "usage"></a>
 
-
 PRs accepted.
-
-## License
-
-MIT © __
