@@ -14,7 +14,7 @@ The GUI is powered by [PyGame](https://www.pygame.org/wiki/about).
 
 ## Installation <a name = "installation"></a>
 
-1. Install the latest verssion of [Python](https://www.python.org/downloads/).
+1. Install the latest version of [Python](https://www.python.org/downloads/).
 
 2. Install [pip](https://pip.pypa.io/en/stable/installation/).
 
